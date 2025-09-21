@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated Trading System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-running { background-color: #28a745; }
+        .status-stopped { background-color: #dc3545; }
+        .status-connecting { background-color: #ffc107; }
+        .card { margin-bottom: 20px; }
+        #logOutput {
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="text-center mb-4">Automated Trading System</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">System Configuration</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="configForm">
+                            <!-- Credentials Section -->
+                            <h6 class="mt-4">Credentials</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" name="email" required value="bossaman102@gmail.com">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Password</label>
+                                <input type="password" class="form-control" name="password" required value="Anup@123a">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" name="phone_number" required value="8076785937">
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" name="demo" id="demoCheck" checked>
+                                <label class="form-check-label" for="demoCheck">Demo Account</label>
+                            </div>
+                            
+                            <!-- Trading Limits Section -->
+                            <h6 class="mt-4">Trading Limits</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Access Token</label>
+                                <input type="text" class="form-control" name="access_token" required value="abc123">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Max Loss Count</label>
+                                <input type="number" class="form-control" name="max_loss_count" value="10" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Max Profit Count</label>
+                                <input type="number" class="form-control" name="max_profit_count" value="100" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Max Total Trades</label>
+                                <input type="number" class="form-control" name="max_total_trades" value="200" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Initial Capital</label>
+                                <input type="number" class="form-control" name="initial_capital" value="5" step="0.01" required>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-success w-100" id="startBtn">Start System</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">System Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span>Status:</span>
+                            <span id="statusIndicator">
+                                <span class="status-indicator status-stopped"></span>
+                                <span id="statusText">Stopped</span>
+                            </span>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Log Output</label>
+                            <div class="border p-2 bg-light" id="logOutput">
+                                <div class="text-muted">System logs will appear here...</div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-danger w-100" id="stopBtn" disabled>Stop System</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const configForm = document.getElementById('configForm');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const statusIndicator = document.querySelector('.status-indicator');
+            const statusText = document.getElementById('statusText');
+            const logOutput = document.getElementById('logOutput');
+            
+            let statusInterval = null;
+            
+            // Handle form submission
+            configForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await startSystem();
+            });
+            
+            // Handle stop button
+            stopBtn.addEventListener('click', async function() {
+                await stopSystem();
+            });
+            
+            // Check system status periodically
+            function startStatusChecker() {
+                if (statusInterval) clearInterval(statusInterval);
+                
+                statusInterval = setInterval(async () => {
+                    try {
+                        const response = await fetch('/api/status');
+                        const data = await response.json();
+                        
+                        updateStatus(data.status);
+                        
+                        // Update logs
+                        if (data.logs && data.logs.length > 0) {
+                            logOutput.innerHTML = data.logs.map(log => 
+                                `<div>${log}</div>`
+                            ).join('');
+                            logOutput.scrollTop = logOutput.scrollHeight;
+                        }
+                    } catch (error) {
+                        console.error('Error checking status:', error);
+                    }
+                }, 2000);
+            }
+            
+            async function startSystem() {
+                const formData = new FormData(configForm);
+                const config = Object.fromEntries(formData.entries());
+                
+                // Add credentials object to match Python structure
+                config.credentials = {
+                    email: config.email,
+                    phone_number: config.phone_number
+                };
+                
+                // Update UI
+                startBtn.disabled = true;
+                statusIndicator.classList.remove('status-stopped', 'status-running');
+                statusIndicator.classList.add('status-connecting');
+                statusText.textContent = 'Starting...';
+                
+                // Clear log output
+                logOutput.innerHTML = '<div class="text-muted">Starting system...</div>';
+                
+                try {
+                    const response = await fetch('/api/start', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(config)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.status === 'success') {
+                        stopBtn.disabled = false;
+                        startStatusChecker();
+                    } else {
+                        alert('Error: ' + result.message);
+                        startBtn.disabled = false;
+                        statusIndicator.classList.remove('status-connecting');
+                        statusIndicator.classList.add('status-stopped');
+                        statusText.textContent = 'Stopped';
+                    }
+                } catch (error) {
+                    alert('Error starting system: ' + error.message);
+                    startBtn.disabled = false;
+                    statusIndicator.classList.remove('status-connecting');
+                    statusIndicator.classList.add('status-stopped');
+                    statusText.textContent = 'Stopped';
+                }
+            }
+            
+            async function stopSystem() {
+                try {
+                    const response = await fetch('/api/stop', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.status === 'success') {
+                        startBtn.disabled = false;
+                        stopBtn.disabled = true;
+                        updateStatus('stopped');
+                    } else {
+                        alert('Error: ' + result.message);
+                    }
+                } catch (error) {
+                    alert('Error stopping system: ' + error.message);
+                }
+            }
+            
+            function updateStatus(status) {
+                statusIndicator.classList.remove('status-stopped', 'status-running', 'status-connecting');
+                
+                if (status === 'running') {
+                    statusIndicator.classList.add('status-running');
+                    statusText.textContent = 'Running';
+                    stopBtn.disabled = false;
+                    startBtn.disabled = true;
+                } else {
+                    statusIndicator.classList.add('status-stopped');
+                    statusText.textContent = 'Stopped';
+                    stopBtn.disabled = true;
+                    startBtn.disabled = false;
+                }
+            }
+            
+            // Initial status check
+            startStatusChecker();
+        });
+    </script>
+</body>
+</html>

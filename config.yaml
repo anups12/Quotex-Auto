@@ -1,0 +1,12 @@
+access_token: abc123
+credentials:
+  asset: USD/GBP (OTC)
+  demo: 'on'
+  email: bossaman102@gmail.com
+  password: Anup@123a
+  phone_number: '8076785937'
+initial_capital: '5'
+max_loss_count: '10'
+max_profit_count: '10'
+max_total_trades: '20'
+server_url: http://13.60.98.167:60020/
