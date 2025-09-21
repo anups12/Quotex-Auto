@@ -98,7 +98,7 @@ def start_trading():
                 'password': config_data.get('password'),
                 'phone_number': config_data.get('phone_number'),
                 'asset': config_data.get('asset', 'USD/GBP (OTC)'),  # Added asset field
-                'demo': config_data.get('demo', True)
+                'demo': True if config_data.get('demo', True) == "on" else False
             },
             'max_loss_count': config_data.get('max_loss_count', 5),
             'max_profit_count': config_data.get('max_profit_count', 5),
