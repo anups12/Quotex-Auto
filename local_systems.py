@@ -71,8 +71,9 @@ class TradeExecutor:
         
         # Create new options for headless mode
         options = uc.ChromeOptions()
+
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-        options.add_argument("--headless=new")  # Enable headless mode
+        options.add_argument("--start-maximized")   # start maximized
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
